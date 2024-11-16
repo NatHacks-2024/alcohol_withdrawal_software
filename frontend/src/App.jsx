@@ -1,95 +1,98 @@
 import React, { useState } from "react";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { chatSession } from "../gemini";
+import { AI_PROMPT } from "../constant";
 
-function App() {
-  const [amplitude, setAmplitude] = useState(""); // Store user input
-  const [prediction, setPrediction] = useState(""); // Store the API response
-  const [loading, setLoading] = useState(false); // Manage loading state
 
-  // Initialize Gemini API
-  const apiKey = "AIzaSyDRB9kQ_xub75Z8G3QMm-qlikShfyyxMT8"; // Replace with your actual API key
-  const genAI = new GoogleGenerativeAI(apiKey);
+export function App() {
+  const [amplitude, setAmplitude] = useState("");
+  const [generatedPrompt, setGeneratedPrompt] = useState("");
+  const [result, setResult] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  // Handle form submission
-  const handleSubmit = async () => {
+  const generatePrompt = async () => {
     if (!amplitude) {
-      alert("Please enter an amplitude value!");
+      console.log("Please enter an amplitude value.");
       return;
     }
 
+    // Replace {amplitude} in the AI_PROMPT
+    const updatedPrompt = AI_PROMPT.replace("{amplitude}", amplitude);
+    setGeneratedPrompt(updatedPrompt);
+    console.log("Generated Prompt:", updatedPrompt);
+
     setLoading(true);
-    setPrediction(""); // Clear previous prediction
-
     try {
-      // Initialize model
-      const model = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash",
+      // Send the prompt to the Gemini chat session
+      const result = await chatSession.sendMessage({
+        role: "user",
+        parts: [{ text: updatedPrompt }],
       });
 
-      // Configuration for the generation
-      const generationConfig = {
-        temperature: 1,
-        topP: 0.95,
-        topK: 40,
-        maxOutputTokens: 8192,
-        responseMimeType: "text/plain",
-      };
-
-      // Dynamic input to Gemini API
-      const parts = [
-        { text: "input: Amplitude_mV" },
-        { text: "output: Withdrawal_Status" },
-        { text: `input: ${parseFloat(amplitude)}` }, // Use user input here
-      ];
-
-      // Call the API
-      const result = await model.generateContent({
-        contents: [{ role: "user", parts }],
-        generationConfig,
-      });
-
-      // Update prediction
-      setPrediction(result.response.text.trim());
+      // Process the response
+      const responseText = await result.response.text(); // Extract the raw response text
+      setResult(responseText);
+      console.log("Model Response:", responseText);
     } catch (error) {
       console.error("Error fetching prediction:", error);
-      setPrediction("Error generating prediction.");
+      setResult("An error occurred. Please try again.");
     } finally {
-      setLoading(false); // Reset loading state
+      setLoading(false);
     }
   };
 
   return (
-    <div style={{ textAlign: "center", marginTop: "50px" }}>
-      <h1>Alcohol Withdrawal Prediction</h1>
-      <label>
-        Enter Amplitude (mV):
-        <input
-          type="number"
-          value={amplitude}
-          onChange={(e) => setAmplitude(e.target.value)}
-          placeholder="e.g., 2.49"
-          style={{ marginLeft: "10px", padding: "5px" }}
-        />
-      </label>
-      <br />
-      <button
-        onClick={handleSubmit}
-        style={{
-          marginTop: "20px",
-          padding: "10px 20px",
-          backgroundColor: "#007BFF",
-          color: "white",
-          border: "none",
-          cursor: "pointer",
-        }}
-        disabled={loading}
-      >
-        {loading ? "Loading..." : "Get Prediction"}
-      </button>
-      <h2 style={{ marginTop: "20px" }}>Prediction:</h2>
-      <p>{prediction}</p>
+    <div className="relative min-h-screen bg-gradient-to-b from-gray-100 via-white to-gray-200">
+      <header className="text-center py-6 bg-[#F73B52] text-white">
+        <h1 className="text-3xl font-bold">Withdrawal Status Predictor</h1>
+      </header>
+
+      <div className="flex flex-col items-center justify-center mt-10 gap-6 px-6">
+        <div className="text-center text-gray-800 max-w-2xl">
+          <h2 className="font-bold text-2xl tracking-wide">
+            Enter Amplitude Value to Predict Withdrawal Status
+          </h2>
+          <p className="mt-2 text-gray-600">
+            Provide an amplitude value (in millivolts) and get a "Yes" or "No"
+            response indicating withdrawal status.
+          </p>
+        </div>
+
+        {/* Input Field for Amplitude */}
+        <div className="w-full max-w-sm mt-6">
+          <input
+            type="text"
+            value={amplitude}
+            onChange={(e) => setAmplitude(e.target.value)}
+            placeholder="Enter amplitude value (mV)"
+            className="w-full p-4 border border-gray-300 rounded-lg shadow-md focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition duration-150 ease-in-out"
+          />
+        </div>
+
+        {/* Generate Prediction Button */}
+        <div className="mt-4">
+          <button
+            onClick={generatePrompt}
+            disabled={loading}
+            className={`rounded-xl p-4 text-white font-semibold bg-gradient-to-r from-[#F73B52] to-red-600 shadow-xl transform transition duration-300 ${
+              loading ? "opacity-50 cursor-not-allowed" : "hover:scale-105"
+            }`}
+          >
+            {loading ? "Predicting..." : "Generate Prediction"}
+          </button>
+        </div>
+
+        {/* Display Result */}
+        <div className="mt-6">
+          {result && (
+            <div className="p-4 border border-gray-300 rounded-lg shadow-md bg-gray-50 max-w-lg text-center">
+              <p className="text-gray-800">
+                <strong>Prediction:</strong> {result}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
-
 export default App;
