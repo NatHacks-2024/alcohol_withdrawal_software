@@ -4,11 +4,11 @@ import pandas as pd
 # Paths
 recordings_folder = "/Users/francinemagno/documents/openbci_gui/recordings"
 output_folder = "/Users/francinemagno/alcohol_withdrawal_software/sensor_data"
-frontend_folder = "/Users/francinemagno/alcohol_withdrawal_software/frontend/src"
+public_folder = "/Users/francinemagno/alcohol_withdrawal_software/frontend/public"
 
-# Ensure the output and frontend folders exist
+# Ensure the output and public folders exist
 os.makedirs(output_folder, exist_ok=True)
-os.makedirs(frontend_folder, exist_ok=True)
+os.makedirs(public_folder, exist_ok=True)
 
 # Find the most recent session folder
 session_folders = [
@@ -45,8 +45,8 @@ try:
     second_column.to_csv(output_file_path, index=False, header=False)
     print(f"Extracted column saved to: {output_file_path}")
 
-    # Save the median to a text file in the frontend folder
-    median_file_path = os.path.join(frontend_folder, "median_value.txt")
+    # Save the median to a text file in the public folder
+    median_file_path = os.path.join(public_folder, "median_value.txt")
     with open(median_file_path, "w") as median_file:
         median_file.write(f"{median_value}\n")
     print(f"Median saved to: {median_file_path}")
