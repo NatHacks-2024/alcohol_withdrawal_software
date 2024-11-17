@@ -7,24 +7,19 @@ export function App() {
   const [result, setResult] = useState("");
   const [loading, setLoading] = useState(false);
   const [medianValue, setMedianValue] = useState("0");
+  const [feedback, setFeedback] = useState("");
 
   const generatePrompt = async () => {
-    // Replace {amplitude} in the AI_PROMPT
     const updatedPrompt = AI_PROMPT.replace("{amplitude}", medianValue);
     setGeneratedPrompt(updatedPrompt);
     console.log("Generated Prompt:", updatedPrompt);
-    console.log("Median Value:", medianValue);
 
     setLoading(true);
     try {
-      // Send the prompt to the Gemini chat session
-      const result = await chatSession.sendMessage(updatedPrompt);
+      const response = await chatSession.sendMessage(updatedPrompt);
+      const responseText = await response.response.text();
+      const responseData = JSON.parse(responseText);
 
-      // Process the response
-      const responseText = await result.response.text(); // Extract the raw response text
-      const responseData = JSON.parse(responseText); // Parse the JSON response
-
-      // Extract the first prediction's output (Yes or No)
       const prediction =
         responseData.predictions && responseData.predictions[0]
           ? responseData.predictions[0].output
@@ -32,6 +27,9 @@ export function App() {
 
       setResult(prediction);
       console.log("Prediction Output:", prediction);
+
+      // Generate feedback based on the result and median value
+      generateFeedback(prediction, parseFloat(medianValue));
     } catch (error) {
       console.error("Error fetching prediction:", error);
       setResult("An error occurred. Please try again.");
@@ -40,44 +38,62 @@ export function App() {
     }
   };
 
-  useEffect(() => {
-    // Fetch the median value from the `public` folder
-    const loadMedianValue = async () => {
-      try {
-        const response = await fetch("/median_value.txt");
-        if (!response.ok) {
-          throw new Error(`Failed to fetch file: ${response.status}`);
-        }
-        const data = await response.text();
-        setMedianValue(data.trim()); // Remove any extra whitespace
-        console.log("Median Value Loaded:", data.trim());
-      } catch (error) {
-        console.error("Error fetching median_value.txt:", error);
-      }
-    };
+  const generateFeedback = (prediction, amplitude) => {
+    let feedbackText = "";
 
-    loadMedianValue();
+    if (prediction === "Yes") {
+      if (amplitude >= 3.0) {
+        feedbackText =
+          "Severe withdrawal symptoms detected. Immediate medical attention is required. Administer benzodiazepines and monitor for complications like seizures or delirium tremens 🚨🚨🚨";
+      } else if (amplitude >= 1.5) {
+        feedbackText =
+          "Moderate withdrawal symptoms detected. Medication may be necessary. Monitor closely and ensure the patient is in a safe environment 🚨";
+      } else {
+        feedbackText =
+          "Mild withdrawal symptoms detected. Non-pharmacological interventions and observation may suffice ";
+      }
+    } else {
+      feedbackText = "No significant withdrawal symptoms detected. Continue monitoring as needed.";
+    }
+
+    setFeedback(feedbackText);
+  };
+
+  useEffect(() => {
+    fetch("/median_value.txt")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.text();
+      })
+      .then((data) => {
+        setMedianValue(data.trim());
+        console.log("Median Value Loaded:", data.trim());
+      })
+      .catch((error) => console.error("Error fetching median_value.txt:", error));
   }, []);
 
   return (
     <div className="relative min-h-screen bg-gradient-to-b from-gray-100 via-white to-gray-200">
       <header className="text-center py-6 bg-[#F73B52] text-white">
-        <h1 className="text-3xl font-bold">Withdrawal Status Predictor</h1>
+        <h1 className="text-3xl font-bold">Withdrawal Status Predictor </h1>
       </header>
 
       <div className="flex flex-col items-center justify-center mt-10 gap-6 px-6">
         <div className="text-center text-gray-800 max-w-2xl">
           <h2 className="font-bold text-2xl tracking-wide">
-            Predict Withdrawal Status Automatically
+            Predict Withdrawal Status Based on Median Amplitude
           </h2>
           <p className="mt-2 text-gray-600">
-            The system will use the median amplitude value from the file and
-            generate a "Yes" or "No" prediction indicating withdrawal status.
+            Analyze withdrawal symptoms based on sensor data and receive tailored feedback.
           </p>
-          <p className="mt-2 text-gray-700 font-semibold">
-            Median Amplitude: {medianValue} mV
-          </p>
+
+          <h1 className="text-bold ">
+            MEDIAN VALUE OF AMPLITUDE IN MVs = {medianValue}
+          </h1>
         </div>
+        
 
         {/* Generate Prediction Button */}
         <div className="mt-4">
@@ -102,7 +118,6 @@ export function App() {
             </div>
           )}
         </div>
-
         <div className="mt-6">
           {result && (
             <img src ="/selected_range_plot.png">
@@ -110,6 +125,16 @@ export function App() {
             </img>
           )}
           </div>
+
+
+        {/* Display Feedback */}
+        {feedback && (
+          <div className="mt-6 p-6 border border-green-300 rounded-lg shadow-md bg-green-50 max-w-lg text-center">
+            <p className="text-green-800 font-semibold">
+              <strong>Feedback:</strong> {feedback}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
