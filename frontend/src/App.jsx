@@ -1,37 +1,44 @@
-import React, { useState } from "react";
+import React, { useState ,useEffect} from "react";
 import { chatSession } from "../gemini";
 import { AI_PROMPT } from "../constant";
 
-
+//import median_value from "/median_value.txt"
 export function App() {
   const [amplitude, setAmplitude] = useState("");
   const [generatedPrompt, setGeneratedPrompt] = useState("");
   const [result, setResult] = useState("");
   const [loading, setLoading] = useState(false);
+  const [medianValue, setMedianValue] = useState("1");
 
   const generatePrompt = async () => {
     if (!amplitude) {
       console.log("Please enter an amplitude value.");
       return;
     }
-
+  
     // Replace {amplitude} in the AI_PROMPT
     const updatedPrompt = AI_PROMPT.replace("{amplitude}", amplitude);
     setGeneratedPrompt(updatedPrompt);
     console.log("Generated Prompt:", updatedPrompt);
-
+    console.log(medianValue);
+  
     setLoading(true);
     try {
       // Send the prompt to the Gemini chat session
-      const result = await chatSession.sendMessage({
-        role: "user",
-        parts: [{ text: updatedPrompt }],
-      });
-
+      const result = await chatSession.sendMessage(updatedPrompt);
+  
       // Process the response
       const responseText = await result.response.text(); // Extract the raw response text
-      setResult(responseText);
-      console.log("Model Response:", responseText);
+      const responseData = JSON.parse(responseText); // Parse the JSON response
+  
+      // Extract the first prediction's output (Yes or No)
+      const prediction =
+        responseData.predictions && responseData.predictions[0]
+          ? responseData.predictions[0].output
+          : "Error: Unable to get prediction";
+  
+      setResult(prediction);
+      console.log("Prediction Output:", prediction);
     } catch (error) {
       console.error("Error fetching prediction:", error);
       setResult("An error occurred. Please try again.");
@@ -39,6 +46,23 @@ export function App() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetch("/median_value.txt") // Correct path for files in the `public` folder
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.text();
+      })
+      .then((data) => {
+        setMedianValue(data.trim());
+        console.log("Median Value Loaded:", data.trim());
+      })
+      .catch((error) => console.error("Error fetching median_value.txt:", error));
+  }, []);
+  
+  
 
   return (
     <div className="relative min-h-screen bg-gradient-to-b from-gray-100 via-white to-gray-200">
@@ -95,4 +119,5 @@ export function App() {
     </div>
   );
 }
+
 export default App;
