@@ -1,42 +1,35 @@
-import React, { useState ,useEffect} from "react";
+import React, { useState, useEffect } from "react";
 import { chatSession } from "../gemini";
 import { AI_PROMPT } from "../constant";
 
-//import median_value from "/median_value.txt"
 export function App() {
-  const [amplitude, setAmplitude] = useState("");
   const [generatedPrompt, setGeneratedPrompt] = useState("");
   const [result, setResult] = useState("");
   const [loading, setLoading] = useState(false);
-  const [medianValue, setMedianValue] = useState("1");
+  const [medianValue, setMedianValue] = useState("0");
 
   const generatePrompt = async () => {
-    if (!amplitude) {
-      console.log("Please enter an amplitude value.");
-      return;
-    }
-  
     // Replace {amplitude} in the AI_PROMPT
-    const updatedPrompt = AI_PROMPT.replace("{amplitude}", amplitude);
+    const updatedPrompt = AI_PROMPT.replace("{amplitude}", medianValue);
     setGeneratedPrompt(updatedPrompt);
     console.log("Generated Prompt:", updatedPrompt);
-    console.log(medianValue);
-  
+    console.log("Median Value:", medianValue);
+
     setLoading(true);
     try {
       // Send the prompt to the Gemini chat session
       const result = await chatSession.sendMessage(updatedPrompt);
-  
+
       // Process the response
       const responseText = await result.response.text(); // Extract the raw response text
       const responseData = JSON.parse(responseText); // Parse the JSON response
-  
+
       // Extract the first prediction's output (Yes or No)
       const prediction =
         responseData.predictions && responseData.predictions[0]
           ? responseData.predictions[0].output
           : "Error: Unable to get prediction";
-  
+
       setResult(prediction);
       console.log("Prediction Output:", prediction);
     } catch (error) {
@@ -48,21 +41,23 @@ export function App() {
   };
 
   useEffect(() => {
-    fetch("/median_value.txt") // Correct path for files in the `public` folder
-      .then((response) => {
+    // Fetch the median value from the `public` folder
+    const loadMedianValue = async () => {
+      try {
+        const response = await fetch("/median_value.txt");
         if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
+          throw new Error(`Failed to fetch file: ${response.status}`);
         }
-        return response.text();
-      })
-      .then((data) => {
-        setMedianValue(data.trim());
+        const data = await response.text();
+        setMedianValue(data.trim()); // Remove any extra whitespace
         console.log("Median Value Loaded:", data.trim());
-      })
-      .catch((error) => console.error("Error fetching median_value.txt:", error));
+      } catch (error) {
+        console.error("Error fetching median_value.txt:", error);
+      }
+    };
+
+    loadMedianValue();
   }, []);
-  
-  
 
   return (
     <div className="relative min-h-screen bg-gradient-to-b from-gray-100 via-white to-gray-200">
@@ -73,23 +68,15 @@ export function App() {
       <div className="flex flex-col items-center justify-center mt-10 gap-6 px-6">
         <div className="text-center text-gray-800 max-w-2xl">
           <h2 className="font-bold text-2xl tracking-wide">
-            Enter Amplitude Value to Predict Withdrawal Status
+            Predict Withdrawal Status Automatically
           </h2>
           <p className="mt-2 text-gray-600">
-            Provide an amplitude value (in millivolts) and get a "Yes" or "No"
-            response indicating withdrawal status.
+            The system will use the median amplitude value from the file and
+            generate a "Yes" or "No" prediction indicating withdrawal status.
           </p>
-        </div>
-
-        {/* Input Field for Amplitude */}
-        <div className="w-full max-w-sm mt-6">
-          <input
-            type="text"
-            value={amplitude}
-            onChange={(e) => setAmplitude(e.target.value)}
-            placeholder="Enter amplitude value (mV)"
-            className="w-full p-4 border border-gray-300 rounded-lg shadow-md focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition duration-150 ease-in-out"
-          />
+          <p className="mt-2 text-gray-700 font-semibold">
+            Median Amplitude: {medianValue} mV
+          </p>
         </div>
 
         {/* Generate Prediction Button */}
@@ -115,6 +102,14 @@ export function App() {
             </div>
           )}
         </div>
+
+        <div className="mt-6">
+          {result && (
+            <img src ="/selected_range_plot.png">
+              
+            </img>
+          )}
+          </div>
       </div>
     </div>
   );
